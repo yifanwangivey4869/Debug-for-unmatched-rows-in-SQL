@@ -1,0 +1,78 @@
+With SubsALL as (SELECT 
+      CompanyId,
+               ProductType,
+      SubscriptionId,
+      sp.Product, 
+      s.StartDate,
+      S.monthlyprice,
+      s.hasicbcsubscription,
+      s.SubscriptionProductBundleId,
+      Case
+      when s.CancellationEffectiveDate is null then s.EndDate
+      when s.EndDate > s.CancellationEffectiveDate then s.CancellationEffectiveDate
+      when s.EndDate < s.CancellationEffectiveDate then s.EndDate
+      Else s.EndDate 
+      END as EndDate,
+               ROW_NUMBER() OVER (PARTITION BY [s].[CompanyId] ORDER BY [s].[EndDate] DESC, [s].[SubscriptionId] DESC) AS N
+             FROM
+                bi.[lienquest].[Subscription] s
+             INNER JOIN bi.lienquest.SubscriptionProduct sp
+             ON s.SubscriptionProductId = sp.SubscriptionProductId
+             INNER JOIN bi.lienquest.SubscriptionProductType spt
+             ON s.SubscriptionProductTypeId = spt.SubscriptionProductTypeId
+             WHERE
+sp.Product IN('VHR', 'VHR Verified') and s.StartDate < '2024-08-03 00:00:00.000'and ((s.Enddate >'2024-08-03 00:00:00.000' and s.Enddate is not null) or (s.CancellationEffectiveDate> '2024-08-03 00:00:00.000')))
+
+,
+s2 as ( SELECT
+  MIN(lienquest.Subscription.StartDate) AS StartDate
+  ,lienquest.Subscription.CompanyId
+FROM
+  lienquest.Subscription
+  INNER JOIN lienquest.SubscriptionProduct
+    ON lienquest.Subscription.SubscriptionProductId = lienquest.SubscriptionProduct.SubscriptionProductId
+  INNER JOIN lienquest.SubscriptionProductType
+    ON lienquest.Subscription.SubscriptionProductTypeId = lienquest.SubscriptionProductType.SubscriptionProductTypeId
+WHERE
+  lienquest.Subscription.SubscriptionId IS NOT NULL
+  AND lienquest.SubscriptionProduct.Product IN (N'VHR', N'VHR Verified')
+GROUP BY
+  lienquest.Subscription.CompanyId)
+
+
+SELECT
+      s.Product, 
+      a.territoryidname,
+      s.CompanyId,
+      a.name as companyname,
+      a.new_dealerassociations as groups,
+      a.industrycodename,
+      u.isParent,
+      a.new_performancemanagerownername as ownername,
+      a.new_dealergroupmanagername as managername,
+      s2.startDate as first_subscribed,
+      s.StartDate,
+      s.EndDate,
+      s.monthlyprice,
+      a.new_numcarsonlot,
+      s.hasicbcsubscription,
+      s.SubscriptionProductBundleId,
+      a.address1_stateorprovince,
+	  N
+
+      
+
+             FROM subsAll s
+    left join bi.crm.FilteredAccount a 
+    ON a.accountnumber = s.companyId
+    left join bi.lienquest.Uvip_Company_Active u
+    ON u.company_id =s.companyId
+    left join s2
+    on s.companyid = s2.companyid
+
+    
+             WHERE
+s.Enddate > '2024-08-03 00:00:00.000'
+ and territoryidname not in ('Internal','Lender','Government','Non-Dealer','(blank)', 'OEM', 'National Auction') AND a.name NOT LIKE N'Test' AND N=1;
+
+
